@@ -54,7 +54,14 @@ function mergeByBundle(apps){
 
   for(const v of map.values()){
     if(Array.isArray(v.versions)){
-      v.versions.sort((x,y)=>semverCompare(y.version, x.version));
+      v.versions.sort((x,y)=>{
+        const dx = x.date ? new Date(x.date) : null;
+        const dy = y.date ? new Date(y.date) : null;
+        if(dx && dy) return dy - dx;
+        if(dx) return -1;
+        if(dy) return 1;
+        return semverCompare(y.version, x.version);
+      });
     }
   }
   return Array.from(map.values());
@@ -74,39 +81,25 @@ function sortApps(apps, mode){
   }
 }
 
-function match(app, q){
-  if(!q) return true;
-  q = q.toLowerCase();
-  const text = [
-    app.name, app.bundle, app.dev, app.desc,
-    ...(app.versions||[]).map(v=>v.version)
-  ].filter(Boolean).join(' ').toLowerCase();
-  return text.includes(q);
-}
-
-
-async function loadAll(){
+async function loadAll() {
   const sources = getSources();
   state.allMerged = [];
   $('#grid').innerHTML = '';
   showSkeleton(12);
-  const statusContainer = $('#sourceStatus');
-  const promises = sources.map(src => (async ()=>{
-    try{
+
+  const promises = sources.map(src => (async () => {
+    try {
       const out = await fetchRepo(src);
       const apps = normalizeRepo(out.data, out.url);
       addApps(apps);
       state.allMerged = state.allMerged.concat(apps);
-      renderAppsIncrementally(apps);
-      if(statusContainer){
-        const s = document.createElement('div'); s.className='source-status ok'; s.textContent = src; statusContainer.appendChild(s);
+      // Only render if not searching. If searching, we wait for all sources to load.
+      if (!state.q || state.q.trim() === '') {
+        renderAppsIncrementally(apps);
       }
       return { src, ok: true };
-    }catch(err){
+    } catch (err) {
       console.warn('Failed source', src, err);
-      if(statusContainer){
-        const s = document.createElement('div'); s.className='source-status err'; s.textContent = src; statusContainer.appendChild(s);
-      }
       return { src, ok: false, err: String(err) };
     }
   })());
@@ -119,52 +112,27 @@ async function loadAll(){
 }
 function filterAndPrepare(){
   const q = state.q.trim();
-  const filtered = state.allMerged.filter(a=>match(a, q));
-  if(q){
-
-    state.list = expandForSearch(filtered);
-  }else{
-    state.list = filtered;
-  }
-
-  if(q){
-    state.list.sort((a,b)=>{
-      const an=a.name.toLowerCase(), bn=b.name.toLowerCase();
-      if(an!==bn) return an<bn?-1:1;
-      const av=a._verEntry?.version||'', bv=b._verEntry?.version||'';
-      return semverCompare(bv, av);
-    });
-  }else{
+  if (q) {
+    state.list = searchApps(q);
+  } else {
+    state.list = state.allMerged;
     sortApps(state.list, state.sort);
   }
+
   state.rendered = 0;
-  $('#grid').innerHTML='';
+  $('#grid').innerHTML = '';
   appendBatch();
 }
 
 
-function renderAppsIncrementally(apps){
-  // Quick incremental renderer: append cards for apps as they arrive.
-  if(!Array.isArray(apps) || apps.length===0) return;
+function renderAppsIncrementally(apps) {
+  if (!Array.isArray(apps) || apps.length === 0) return;
   const grid = $('#grid');
-  // ensure state.list exists
-  state.list = state.list || [];
-  // if no active search, append directly
-  if(!state.q || state.q.trim()===''){
-    apps.forEach(a=>{
-      state.list.push(a);
-      grid.appendChild(buildCard(a));
-      state.rendered = state.rendered + 1 || 1;
-    });
-  }else{
-    // if searching, re-run search and re-render whole list
-    state.allMerged = state.allMerged.concat(apps);
-    const results = searchApps(state.q, 1000);
-    state.list = results;
-    state.rendered = 0;
-    grid.innerHTML = '';
-    appendBatch();
-  }
+  apps.forEach(a => {
+    // Note: state.list is not updated here, it's managed by filterAndPrepare
+    grid.appendChild(buildCard(a));
+    state.rendered++;
+  });
 }
 function appendBatch(){
   const grid = $('#grid');
@@ -215,21 +183,23 @@ function makeLink(a, version){
   return `app.html?${params.toString()}`;
 }
 
-document.getElementById('search').addEventListener('input', e=>{ state.q = e.target.value; filterAndPrepare(); });
-document.getElementById('sort').addEventListener('change', e=>{ state.sort = e.target.value; filterAndPrepare(); });
+document.getElementById('search').addEventListener('input', e => {
+  state.q = e.target.value;
+  debounce(filterAndPrepare, 220)();
+});
+document.getElementById('sort').addEventListener('change', e => { state.sort = e.target.value; filterAndPrepare(); });
 
-let ticking=false;
-window.addEventListener('scroll', ()=>{
-  if(ticking) return; ticking=true;
-  requestAnimationFrame(()=>{
+let ticking = false;
+window.addEventListener('scroll', () => {
+  if (ticking) return;
+  ticking = true;
+  requestAnimationFrame(() => {
     const nearBottom = (window.innerHeight + window.scrollY) >= (document.body.offsetHeight - 400);
-    if(nearBottom) appendBatch();
-    ticking=false;
+    if (nearBottom) appendBatch();
+    ticking = false;
   });
 });
 
 loadAll();
 
-function debounce(fn, ms=200){ let id; return (...a)=>{ clearTimeout(id); id = setTimeout(()=>fn(...a), ms); }; }
-const onSearchDebounced = debounce(()=>{ state.q = $('#q').value || ''; filterAndPrepare(); const sc = document.querySelector('.sort-controls'); if(sc) sc.classList.toggle('hidden', !!state.q.trim()); }, 220);
-if($('#q')) $('#q').addEventListener('input', onSearchDebounced);
+function debounce(fn, ms = 200) { let id; return (...a) => { clearTimeout(id); id = setTimeout(() => fn(...a), ms); }; }

@@ -6,10 +6,8 @@ const fuseOpts = {
   minMatchCharLength: 2,
   useExtendedSearch: true,
   keys: [
-    { name: 'name', weight: 0.75 },
-    { name: 'developerName', weight: 0.12 },
-    { name: 'bundleIdentifier', weight: 0.08 },
-    { name: 'subtitle', weight: 0.05 }
+    { name: 'name', weight: 0.8 },
+    { name: 'bundleIdentifier', weight: 0.2 }
   ]
 };
 let fuse = null;

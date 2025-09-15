@@ -20,7 +20,6 @@ async function start(){
   const hero = $('#hero');
   const vSel = $('#versionSelect');
   const dl = $('#downloadBtn');
-  const copy = $('#copyLinkInput');
 
   if(!bundle || !repo){
     hero.innerHTML = `<div class="meta"><div class="hero-title">No app selected</div><div class="hero-sub">Open from Home or use a shared link.</div></div>`;
@@ -101,7 +100,6 @@ async function start(){
       if(opt?.value) params.set('version', opt.value);
       params.set('repo', repo);
       const shareUrl = location.origin + location.pathname.replace(/[^/]+$/, '') + 'app.html?' + params.toString();
-      copy.value = shareUrl;
       const descEl = $('#desc');
       descEl.textContent = notes ? ellipsize(notes, 1000) : (app.desc ? ellipsize(app.desc, 1000) : '');
       const upd = $('#updatedDate');
@@ -111,8 +109,6 @@ async function start(){
     updateUIForVersion();
     vSel.addEventListener('change', updateUIForVersion);
 
-    copy.addEventListener('click', async function(){ try{ await navigator.clipboard.writeText(copy.value); showToast('Copied'); }catch(_){ try{ copy.removeAttribute('readonly'); copy.select(); copy.setSelectionRange(0, 99999); document.execCommand('copy'); copy.setAttribute('readonly','true'); showToast('Copied'); }catch(e){ showToast('Copy failed'); } } });
-
   }catch(e){
     hero.innerHTML = `<div class="meta"><div class="hero-title">Error</div><div class="hero-sub">Unable to load app details.</div></div>`;
     console.warn(e);
@@ -120,19 +116,3 @@ async function start(){
 }
 
 start();
-
-(function attachCopyBehavior(){
-  const copy = document.getElementById('copyLinkInput');
-  if(!copy) return;
-  copy.setAttribute('readonly','true');
-  copy.setAttribute('tabindex', '-1');
-  copy.style.fontSize = '16px';
-
-  copy.addEventListener('focus', (e)=>{ e.target.blur(); });
-
-  copy.addEventListener('touchstart', async function(e){ e.preventDefault(); try{ await navigator.clipboard.writeText(copy.value); }catch(_){ copy.select(); document.execCommand('copy'); } });
-  copy.addEventListener('click', async function(e){ try{ await navigator.clipboard.writeText(copy.value); }catch(_){ try{ copy.select(); document.execCommand('copy'); }catch(e){} } });
-})();
-
-// set share input value
-const sl = document.getElementById('shareLink'); if(sl) sl.value = window.location.href;

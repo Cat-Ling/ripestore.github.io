@@ -45,7 +45,7 @@ async function start(){
       }catch(e){  }
     }
     if(!collectedApps.length){
-      hero.innerHTML = `<div class=\"meta\"><div class=\"hero-title\">Not found</div><div class=\"hero-sub\">This bundle isn’t in that repo.</div></div>`;
+      hero.innerHTML = `<div class="meta"><div class="hero-title">Not found</div><div class="hero-sub">This bundle isn’t in that repo.</div></div>`;
       return;
     }
 

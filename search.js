@@ -21,15 +21,33 @@ export function initSearch(apps){
 
 export function addApps(apps){
   if(!apps || !apps.length) return;
-  allApps.push(...apps);
+  apps.forEach(app => {
+    if (app.versions && app.versions.length) {
+      app.versions.forEach(v => {
+        // Create a new object for each version, merging app-level and version-level data
+        allApps.push({ ...app, ...v, _isVersion: true });
+      });
+    } else {
+      // If no versions array, treat the app itself as a single version
+      allApps.push({ ...app, _isVersion: true });
+    }
+  });
   if(!fuse) fuse = new Fuse(allApps, fuseOpts);
-  apps.forEach(a => fuse.add(a));
+  else fuse.add(allApps); // Add all new flattened apps to Fuse
 }
 
-export function searchApps(q, limit=50){
+export function searchApps(q, appsToSearch = allApps, limit=50){
   q = (q||'').trim();
-  if(!q) return allApps.slice(0, limit);
-  const raw = fuse.search(q, { limit: limit * 2 });
+  const targetApps = appsToSearch || allApps;
+  if(!q) return targetApps.slice(0, limit);
+
+  // Re-initialize Fuse with the targetApps if it's different from allApps
+  let currentFuse = fuse;
+  if (targetApps !== allApps) {
+    currentFuse = new Fuse(targetApps, fuseOpts);
+  }
+
+  const raw = currentFuse.search(q, { limit: limit * 2 });
   const qLower = q.toLowerCase();
   const scored = raw.map(r=>{
     const item = r.item;

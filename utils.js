@@ -1,12 +1,38 @@
-
 export const $ = (q, el=document) => el.querySelector(q);
 
 export function parseDateString(s){
-  if(!s) return null;
-  const t = Date.parse(s);
-  if(!isNaN(t)) return new Date(t);
+  if (typeof s !== 'string' || s.trim() === '') return null;
+  s = s.trim();
 
-  try{ return new Date(s); }catch(e){ return null; }
+  let date = null;
+
+  // Attempt 1: Handle YYYYMMDDHHmmss format (from apptesters.json fullDate)
+  const fullDateMatch = s.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})$/);
+  if (fullDateMatch) {
+    const [_, year, month, day, hour, minute, second] = fullDateMatch;
+    date = new Date(Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hour), parseInt(minute), parseInt(second)));
+    if (!isNaN(date.getTime())) {
+      return date;
+    }
+  }
+
+  // Attempt 2: Fallback to Date.parse for ISO 8601, YYYY-MM-DD, and other standard formats
+  const t = Date.parse(s);
+  if (!isNaN(t)) {
+    date = new Date(t);
+    if (!isNaN(date.getTime())) {
+      return date;
+    }
+  }
+
+  // Attempt 3: Final fallback for other formats (less reliable)
+  try{ 
+    date = new Date(s);
+    if (!isNaN(date.getTime())) {
+      return date;
+    }
+    return null;
+  }catch(e){ return null; }
 }
 export function formatDate(s){
   const d = (s instanceof Date)? s : parseDateString(s);
@@ -54,12 +80,7 @@ function toUnified(o, sourceUrl){
   const category = o.category || "";
   let versions = [];
   if(Array.isArray(o.versions) && o.versions.length){
-    versions = o.versions.map(v=>({
-      version: v.version || v.build || v.tag || "",
-      date: v.versionDate || v.date || v.published || "",
-      notes: v.localizedDescription || v.changelog || v.notes || "",
-      url: v.downloadURL || v.down || v.url || v.ipa || v.download || ""
-    })).filter(v=>v.url);
+    versions = o.versions.map(v=>({ version: v.version || v.build || v.tag || "", date: v.fullDate || v.versionDate || v.date || v.published || "", notes: v.localizedDescription || v.changelog || v.notes || "", url: v.downloadURL || v.down || v.url || v.ipa || v.download || "" })).filter(v=>v.url);
   }
   if(!versions.length){
     const url = o.downloadURL || o.down || o.url || o.ipa || o.download || "";
@@ -83,4 +104,3 @@ export function semverCompare(a,b){
   return 0;
 }
 
-export function preferVersionDate(v){ return v?.versionDate || v?.date || null; }

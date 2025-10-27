@@ -1,4 +1,4 @@
-import { $, $$, fetchJSON, normalizeRepo, ellipsize, semverCompare } from './utils.js';
+import { $, $$, fetchJSON, normalizeRepo, ellipsize, semverCompare, parseDateString } from './utils.js';
 
 
 import { fetchRepo } from './repo-loader.js';
@@ -70,9 +70,34 @@ function mergeByBundle(apps){
 function sortApps(apps, mode){
   const byNameAsc = (a,b)=>a.name.localeCompare(b.name);
   const byNameDesc= (a,b)=>b.name.localeCompare(a.name);
-  const newestVerDate = (a)=>{ const d = a.versions?.[0]?.date; return d ? Date.parse(d) : null; }; // versions already newest-first
-  const byVerDesc = (a,b)=>{ const db = newestVerDate(b), da = newestVerDate(a); if(db && da) return db - da; if(db) return 1; if(da) return -1; return semverCompare((b.versions?.[0]?.version||''),(a.versions?.[0]?.version||'')); };
-  const byVerAsc  = (a,b)=>{ const da = newestVerDate(a), db = newestVerDate(b); if(da && db) return da - db; if(da) return -1; if(db) return 1; return semverCompare((a.versions?.[0]?.version||''),(b.versions?.[0]?.version||'')); };
+  const getLatestDate = (app) => {
+    const dateStr = app.versions?.[0]?.date;
+    return parseDateString(dateStr);
+  };
+
+  const byVerDesc = (a, b) => {
+    const dateA = getLatestDate(a);
+    const dateB = getLatestDate(b);
+
+    if (dateA && dateB) {
+      return dateB.getTime() - dateA.getTime(); // Sort by date descending
+    }
+    if (dateA) return -1; // a has a date, b doesn't, so a is "newer"
+    if (dateB) return 1;  // b has a date, a doesn't, so b is "newer"
+    return a.name.localeCompare(b.name); // Fallback to name if no dates are available
+  };
+
+  const byVerAsc = (a, b) => {
+    const dateA = getLatestDate(a);
+    const dateB = getLatestDate(b);
+
+    if (dateA && dateB) {
+      return dateA.getTime() - dateB.getTime(); // Sort by date ascending
+    }
+    if (dateA) return 1;  // a has a date, b doesn't, so a is "older"
+    if (dateB) return -1; // b has a date, a doesn't, so b is "older"
+    return a.name.localeCompare(b.name); // Fallback to name if no dates are available
+  };
   switch(mode){
     case 'name-desc': return apps.sort(byNameDesc);
     case 'version-desc': return apps.sort(byVerDesc);
@@ -99,7 +124,6 @@ async function loadAll() {
       }
       return { src, ok: true };
     } catch (err) {
-      console.warn('Failed source', src, err);
       return { src, ok: false, err: String(err) };
     }
   })());
@@ -112,12 +136,35 @@ async function loadAll() {
 }
 function filterAndPrepare(){
   const q = state.q.trim();
+  let appsToProcess = [];
+
   if (q) {
-    state.list = searchApps(q);
+    // When searching, flatten all versions from all merged apps
+    const allIndividualVersions = [];
+    state.allMerged.forEach(app => {
+      if (app.versions && app.versions.length) {
+        app.versions.forEach(v => {
+          allIndividualVersions.push({ ...app, ...v, _isVersion: true });
+        });
+      } else {
+        allIndividualVersions.push({ ...app, _isVersion: true });
+      }
+    });
+    appsToProcess = searchApps(q, allIndividualVersions);
   } else {
-    state.list = state.allMerged;
-    sortApps(state.list, state.sort);
+    appsToProcess = state.allMerged;
   }
+
+  // Filter out apps without a date if sorting by version date
+  if (state.sort === 'version-desc' || state.sort === 'version-asc') {
+    appsToProcess = appsToProcess.filter(app => {
+      const dateStr = app.date; // Use app.date directly as it's flattened or from merged app
+      return parseDateString(dateStr) !== null;
+    });
+  }
+
+  state.list = appsToProcess;
+  sortApps(state.list, state.sort);
 
   state.rendered = 0;
   $('#grid').innerHTML = '';
@@ -180,8 +227,7 @@ function makeLink(a, version){
   params.set('bundle', a.bundle);
   if(version) params.set('version', version);
   params.set('repo', a.source);
-  return `app.html?${params.toString()}`;
-}
+  return `${location.origin}/app?${params.toString()}`;}
 
 document.getElementById('search').addEventListener('input', e => {
   state.q = e.target.value;

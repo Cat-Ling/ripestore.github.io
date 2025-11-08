@@ -48,7 +48,7 @@
   <script type="module">
     import { $, $$ } from './utils.js';
     const KEY='ripe_sources';
-    const DEFAULTS=['https://repository.apptesters.org'];
+    const DEFAULTS=['RipeStore'];
     function get(){try{return JSON.parse(localStorage.getItem(KEY))||DEFAULTS}catch(_){return DEFAULTS}}
     function set(arr){localStorage.setItem(KEY, JSON.stringify(arr))}
     let selected = null;

@@ -5,7 +5,7 @@ function getConfiguredSources(){
     const raw = localStorage.getItem('ripe_sources');
     if(raw) return JSON.parse(raw);
   }catch(e){}
-  return ['https://repository.apptesters.org'];
+  return ['https://raw.githubusercontent.com/RipeStore/repos/refs/heads/main/RipeStore.json'];
 }
 
 

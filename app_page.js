@@ -3,20 +3,6 @@ import { $, qs, semverCompare, ellipsize, parseDateString, formatDate } from './
 import { fetchRepo } from './alt-source-kit.js';
 
 /**
- * Retrieves the configured sources from local storage.
- * @returns {string[]} An array of source URLs.
- */
-function getConfiguredSources() {
-  try {
-    const raw = localStorage.getItem('ripe_sources');
-    if (raw) return JSON.parse(raw);
-  } catch (e) {
-    console.error("Error parsing sources from local storage", e);
-  }
-  return ['https://raw.githubusercontent.com/RipeStore/repos/refs/heads/main/RipeStore.json'];
-}
-
-/**
  * Initializes the app details page.
  */
 async function start() {
@@ -101,25 +87,35 @@ async function start() {
     }
 
     /**
-     * Renders the screenshots.
+     * Renders the screenshots in an App Store-style container.
      * @param {string[]} screenshotUrls - An array of screenshot URLs.
      */
     function renderScreenshots(screenshotUrls) {
-        const screenshotsContainer = $('#screenshots');
-        screenshotsContainer.innerHTML = '';
-        if (screenshotUrls && screenshotUrls.length > 0) {
-            const title = document.createElement('h2');
-            title.textContent = 'Screenshots';
-            screenshotsContainer.appendChild(title);
-            const scroll = document.createElement('div');
-            scroll.className = 'screenshots-scroll';
-            screenshotUrls.forEach(url => {
-                const img = document.createElement('img');
-                img.src = url;
-                scroll.appendChild(img);
-            });
-            screenshotsContainer.appendChild(scroll);
-        }
+      const screenshotsContainer = $('#screenshots');
+      screenshotsContainer.innerHTML = '';
+      if (screenshotUrls && screenshotUrls.length > 0) {
+        const title = document.createElement('h2');
+        title.textContent = 'Screenshots';
+        screenshotsContainer.appendChild(title);
+
+        const scrollContainer = document.createElement('div');
+        scrollContainer.className = 'screenshots-scroll-container';
+
+        const scroll = document.createElement('div');
+        scroll.className = 'screenshots-scroll';
+
+        screenshotUrls.forEach(url => {
+          const screenshotCell = document.createElement('div');
+          screenshotCell.className = 'screenshot-cell';
+          const img = document.createElement('img');
+          img.src = url;
+          screenshotCell.appendChild(img);
+          scroll.appendChild(screenshotCell);
+        });
+
+        scrollContainer.appendChild(scroll);
+        screenshotsContainer.appendChild(scrollContainer);
+      }
     }
 
     /**

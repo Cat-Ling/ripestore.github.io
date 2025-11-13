@@ -109,3 +109,29 @@ html,body,.main,.pane,.grid,.card{max-width:100%;overflow-x:hidden}
 
 /* nicer download button */
 .btn-download{ background:linear-gradient(90deg,#4f9aff,#2d7cff); color:white; padding:10px 14px; border-radius:8px; border:none; font-weight:600; }
+
+.screenshots-scroll-container {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Firefox */
+}
+.screenshots-scroll-container::-webkit-scrollbar {
+  display: none; /* Safari and Chrome */
+}
+.screenshots-scroll {
+  display: flex;
+  gap: 10px;
+  padding-bottom: 10px;
+}
+.screenshot-cell {
+  flex: 0 0 auto;
+  width: 150px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.screenshot-cell img {
+  width: 100%;
+  height: auto;
+  display: block;
+}

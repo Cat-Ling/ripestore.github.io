@@ -1,5 +1,5 @@
 // Import utility functions and modules
-import { $, fetchJSON, ellipsize, semverCompare, parseDateString } from './utils.js';
+import { $, ellipsize, semverCompare, parseDateString } from './utils.js';
 import { fetchRepo } from './alt-source-kit.js';
 import { initSearch, addApps, searchApps } from './search.js';
 
@@ -145,20 +145,15 @@ async function loadAll() {
   $('#grid').innerHTML = '';
   showSkeleton(12);
 
-  const promises = sources.map(src => (async () => {
-    try {
-      const out = await fetchRepo(src);
-      const apps = out.data.apps.map(app => ({ ...app, source: out.url }));
-      addApps(apps);
-      state.allMerged = state.allMerged.concat(apps);
-      if (!state.q || state.q.trim() === '') {
-        renderAppsIncrementally(apps);
-      }
-      return { src, ok: true };
-    } catch (err) {
-      return { src, ok: false, err: String(err) };
+  const promises = sources.map(async (src) => {
+    const out = await fetchRepo(src);
+    const apps = out.data.apps.map(app => ({ ...app, source: out.url }));
+    addApps(apps);
+    state.allMerged = state.allMerged.concat(apps);
+    if (!state.q || state.q.trim() === '') {
+      renderAppsIncrementally(apps);
     }
-  })());
+  });
 
   await Promise.allSettled(promises);
   const merged = mergeByBundle(state.allMerged);

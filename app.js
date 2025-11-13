@@ -300,7 +300,7 @@ function makeLink(a, version) {
   params.set('bundle', a.bundle);
   if (version) params.set('version', version);
   params.set('repo', a.source);
-  return 'app.html?' + params.toString();
+  return 'app?' + params.toString();
 }
 
 // Event listener for the search input

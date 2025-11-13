@@ -1,6 +1,6 @@
 // Import utility functions and modules
-import { $, fetchJSON, normalizeRepo, ellipsize, semverCompare, parseDateString } from './utils.js';
-import { fetchRepo } from './repo-loader.js';
+import { $, fetchJSON, ellipsize, semverCompare, parseDateString } from './utils.js';
+import { fetchRepo } from './alt-source-kit.js';
 import { initSearch, addApps, searchApps } from './search.js';
 
 // Constants
@@ -52,7 +52,7 @@ function getSources() {
 function mergeByBundle(apps) {
   const map = new Map();
   for (const a of apps) {
-    const b = (a.bundle || '').trim();
+    const b = (a.bundleIdentifier || '').trim();
     if (!b) { // Keep separate when no bundle ID
       const key = Symbol('nobundle'); // Ensure uniqueness
       map.set(key, a);
@@ -64,13 +64,13 @@ function mergeByBundle(apps) {
       const acc = map.get(b);
       // Merge properties
       acc.name = acc.name || a.name;
-      acc.icon = acc.icon || a.icon;
-      acc.dev = acc.dev || a.dev;
-      acc.desc = acc.desc || a.desc;
+      acc.iconURL = acc.iconURL || a.iconURL;
+      acc.developerName = acc.developerName || a.developerName;
+      acc.localizedDescription = acc.localizedDescription || a.localizedDescription;
       // Merge versions, avoiding duplicates
-      const seen = new Set(acc.versions.map(v => `${v.version}|${v.url}`));
+      const seen = new Set(acc.versions.map(v => `${v.version}|${v.downloadURL}`));
       for (const v of (a.versions || [])) {
-        const id = `${v.version}|${v.url}`;
+        const id = `${v.version}|${v.downloadURL}`;
         if (!seen.has(id)) {
           acc.versions.push(v);
           seen.add(id);
@@ -148,7 +148,7 @@ async function loadAll() {
   const promises = sources.map(src => (async () => {
     try {
       const out = await fetchRepo(src);
-      const apps = normalizeRepo(out.data, out.url);
+      const apps = out.data.apps.map(app => ({ ...app, source: out.url }));
       addApps(apps);
       state.allMerged = state.allMerged.concat(apps);
       if (!state.q || state.q.trim() === '') {
@@ -250,25 +250,25 @@ function buildCard(a) {
   icon.className = 'icon-wrap';
   const img = document.createElement('img');
   img.loading = 'lazy';
-  img.alt = (a.name || a.bundle) + ' icon';
-  img.src = a.icon || 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
+  img.alt = (a.name || a.bundleIdentifier) + ' icon';
+  img.src = a.iconURL || 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
   icon.appendChild(img);
 
   const meta = document.createElement('div');
   meta.className = 'meta';
   const title = document.createElement('div');
   title.className = 'title ellipsis';
-  title.textContent = a.name || a.bundle;
+  title.textContent = a.name || a.bundleIdentifier;
   const sub = document.createElement('div');
   sub.className = 'sub ellipsis';
-  sub.textContent = a.dev || a.bundle;
+  sub.textContent = a.subtitle || a.developerName || a.bundleIdentifier;
   const ver = document.createElement('div');
   ver.className = 'small ellipsis';
   ver.textContent = versionLabel ? `Version ${ellipsize(versionLabel, 48)}` : '';
   const snippet = document.createElement('div');
   snippet.className = 'desc-snippet ellipsis';
 
-  const notes = a._verEntry?.notes || a.desc || '';
+  const notes = a._verEntry?.notes || a.localizedDescription || '';
   snippet.textContent = ellipsize(notes, 120);
 
   meta.appendChild(title);
@@ -297,10 +297,10 @@ function buildCard(a) {
  */
 function makeLink(a, version) {
   const params = new URLSearchParams();
-  params.set('bundle', a.bundle);
+  params.set('bundle', a.bundleIdentifier);
   if (version) params.set('version', version);
   params.set('repo', a.source);
-  return 'app?' + params.toString();
+  return 'app.html?' + params.toString();
 }
 
 // Event listener for the search input

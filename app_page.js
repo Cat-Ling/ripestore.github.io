@@ -44,7 +44,7 @@ async function start() {
 
   try {
     const configured = getConfiguredSources() || [];
-    const repoParam = repo ? decodeURIComponent(repo) : null;
+    const repoParam = repo ? repo : null;
     const sources = Array.from(new Set([...(repoParam ? [repoParam] : []), ...configured]));
     const collectedApps = [];
 

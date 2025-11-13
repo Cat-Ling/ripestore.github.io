@@ -292,13 +292,15 @@ function buildCard(a) {
 /**
  * Creates a link to the app details page.
  * @param {object} a - The app object.
-
+ * @param {string} version - The app version.
+ * @returns {string} The URL for the app details page.
+ */
 function makeLink(a, version) {
   const params = new URLSearchParams();
   params.set('bundle', a.bundle);
   if (version) params.set('version', version);
   params.set('repo', a.source);
-
+  return 'app.html?' + params.toString();
 }
 
 // Event listener for the search input
